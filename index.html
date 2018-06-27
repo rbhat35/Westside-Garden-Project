@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+
+<html class="no-js" lang="en">
+<head>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <meta charset="utf-8">
+  <meta content="ie=edge" http-equiv="x-ua-compatible">
+  <title>Garden Map | HWG</title>
+  <meta content="Historic Westside Gardens of Atlanta Garden Map" name="description">
+  <meta content="width=device-width, initial-scale=1" name="viewport">
+  <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400,700" rel="stylesheet">
+  <link href="css/normalize.css" rel="stylesheet">
+  <link href="css/main.css" rel="stylesheet">
+  <script src="https://www.google.com/jsapi" type="text/javascript"></script>
+</head>
+
+<body id="background" style ="width:100%">
+
+  <div id = "box">
+    <h1><IMG BORDER="0" ALIGN="middle" SRC="http://static1.squarespace.com/static/57fbda201b631bbde4aea8bf/t/5a578d7fe2c483c38b3c3240/1523311704337/?format=1500w"
+    style="width:20%;"></h1>
+    <h3 id="gardenDescription"><i>The Historic Westside gives residents the power to grow their own food. Our Garden Angels, as community residents, plant the seeds of change, sowing and nurturing home gardens to bring food justice and empower the westside.</i></h3>
+  </div>
+
+  <div id="container" style="width:100%;margin:auto">
+    <div id="mapBlock" style="height:600px;width:100%;background:white;float:left">
+
+    </div>
+
+    <div id="box" style="width:100%;float:left">
+      <script src="js/google-sheets-html.js" type="text/javascript"></script>
+      <div id="table">
+      </div>
+    </div>
+  </div>
+<script>
+  var map;
+  function myMap() {
+    var mapCanvas = document.getElementById("mapBlock");
+
+    var mapOptions = {
+      center: new google.maps.LatLng(33.749, -84.388), zoom: 13
+    };
+    map = new google.maps.Map(mapCanvas, mapOptions);
+
+    getData();
+  }
+
+  function getData() {
+    var query = new google.visualization.Query('https://spreadsheets.google.com/tq?key=1IWmwc73x9tjogpnBtetGn6-yAnTdCxXE1w__-g8khzc&output=html&usp=sharing');
+    query.setQuery('SELECT A, B, C, D, E, F, G, H, I, J, K, L label A "Name", B "Address", C "Family Size", D "Maintenace (hrs/week)", E "Meals per Week", F "Crops", G "p1", H "p2", I "p3", J "p4", K "p5", L "community"');
+    query.send(publishPins);
+  }
+
+  function publishPins(response) {
+    if (response.isError()) {
+      console.error('There was a problem with your query: ' + response.getMessage() + ' ' + response.getDetailedMessage());
+      return;
+    }
+    var data = response.getDataTable();
+    var geocoder = new google.maps.Geocoder();
+    if (geocoder) {
+      for (rowNum = 0; rowNum < data.getNumberOfRows(); rowNum++) {
+          var gardenAddress = data.getFormattedValue(rowNum, 1);
+          var familySize = data.getFormattedValue(rowNum, 2);
+          var maintenace = data.getFormattedValue(rowNum, 3);
+          var mealsPerWeek = data.getFormattedValue(rowNum, 4);
+          var crops = data.getFormattedValue(rowNum, 5);
+          var picVec = new Array(data.getFormattedValue(rowNum, 6), data.getFormattedValue(rowNum, 7), data.getFormattedValue(rowNum, 8), data.getFormattedValue(rowNum, 9), data.getFormattedValue(rowNum, 10));
+          var community = false
+
+          if (data.getFormattedValue(rowNum, 11).length > 2) {
+            community = true
+          }
+
+          pics = '';
+          for (i = 0; i < picVec.length; i++) {
+            if (picVec[i].length > 0) {
+              pics += '<IMG vspace="10" ALIGN="Left" SRC="' + picVec[i] + '" alt= "Image ' + i+1 + ' not found" style="width:90%;">';
+            }
+          }
+
+          houseNum = rowNum + 1;
+
+          var contentString = '<div id="content">' +
+          '<div id="siteNotice">' +
+          '</div>' +
+          '<div id="bodyContent">' +
+          '<h2>House ' +
+          houseNum +
+          '</h2>' +
+          '<p>' +
+          '<b>Family Size:  </b>' +
+          familySize +
+          '<br><b>Address:  </b>' +
+          gardenAddress +
+          '<br><b>Maintenace:  </b>' +
+          maintenace +
+          '  (hrs/week)<br><b>Crops:  </b>' +
+            crops +
+          '</p>' +
+          '<p>' +
+          pics +
+          '</p>' +
+          '</div>' +
+          '</div>';
+
+          geoCode(gardenAddress, contentString, community);
+      }
+
+    }
+
+
+  }
+
+
+  function geoCode(inputAddress, contentString, community) {
+
+    geocoder = new google.maps.Geocoder();
+    if (geocoder) {
+      geocoder.geocode({ 'address': inputAddress }, function (results, status) {
+        if (status == google.maps.GeocoderStatus.OK) {
+          if (status != google.maps.GeocoderStatus.ZERO_RESULTS) {
+            addMarker(results, contentString, community);
+          } else {
+            console.error("No results found");
+          }
+        } else {
+          console.error("Geocode was not successful for the following reason: " + status);
+        }
+      });
+    }
+  }
+
+  function addMarker(results, contentString, community) {
+
+
+      /**
+       * Set— icon: image,
+       *
+       * **/
+
+      var image = {
+        url: 'yellowIcon.png',
+        // This marker is 20 pixels wide by 32 pixels high.
+        size: new google.maps.Size(30, 43),
+        // The origin for this image is (0, 0).
+        origin: new google.maps.Point(0, 0),
+        // The anchor for this image is the base of the flagpole at (0, 32).
+        anchor: new google.maps.Point(0, 32)
+      };
+
+      if (community) {
+        var image = {
+          url: 'orangeIcon.png',
+          // This marker is 20 pixels wide by 32 pixels high.
+          size: new google.maps.Size(30, 43),
+          // The origin for this image is (0, 0).
+          origin: new google.maps.Point(0, 0),
+          // The anchor for this image is the base of the flagpole at (0, 32).
+          anchor: new google.maps.Point(0, 32)
+        };
+      }
+
+      var infowindow = new google.maps.InfoWindow(
+      {
+        content: '<div class="scrollFix">' + contentString + '</div>',
+        pixelOffset: 0
+      });
+
+      var marker = new google.maps.Marker({
+        position: results[0].geometry.location,
+        map: map,
+        icon: image
+      });
+
+      marker.addListener('click', function () {
+        infowindow.open(map, marker);
+      });
+
+  }
+
+</script>
+
+<link rel="stylesheet" href="snazzy-info-window.min.css">
+<script src="https://maps.googleapis.com/maps/api/js?key=<***INSERT_KEY_HERE***>&callback=myMap"></script>
+<script src="snazzy-info-window.min.js"></script>
+
+
+</body>
+</html>
